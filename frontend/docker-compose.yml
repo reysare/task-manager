@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Laravel Backend
+  app:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: task-manager-backend
+    container_name: task-manager-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    environment:
+      - DB_HOST=db
+      - DB_DATABASE=task_manager
+      - DB_USERNAME=root
+      - DB_PASSWORD=secret
+    networks:
+      - task-manager-network
+
+  # Nginx
+  webserver:
+    image: nginx:alpine
+    container_name: task-manager-webserver
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - task-manager-network
+    depends_on:
+      - app
+
+  # MySQL
+  db:
+    image: mysql:5.7
+    container_name: task-manager-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=task_manager
+      - MYSQL_ROOT_PASSWORD=secret
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - task-manager-network
+
+  # Vue Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: task-manager-frontend
+    container_name: task-manager-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../frontend:/app
+    networks:
+      - task-manager-network
+    depends_on:
+      - app
+
+volumes:
+  dbdata:
+    driver: local
+
+networks:
+  task-manager-network:
+    driver: bridge
